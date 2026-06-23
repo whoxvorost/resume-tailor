@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+
+# Uploads and outputs
+uploads/
+outputs/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
