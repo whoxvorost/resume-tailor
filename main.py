@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers import resume
 import uvicorn
 
 # Create the FastAPI application instance
@@ -13,6 +14,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Connect routers
+app.include_router(resume.router, prefix="/resume", tags=["resume"])
 
 
 # Health check endpoint — used to verify the server is running
