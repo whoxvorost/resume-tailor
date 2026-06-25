@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models.resume import Resume
 import shutil
 import os
+from app.services.resume_parser import parse_resume
 
 router = APIRouter()
 
@@ -22,5 +23,11 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     db.add(resume)
     db.commit()
     db.refresh(resume)
+    text = parse_resume(file_path)
 
-    return {"id": resume.id, "filename": resume.filename, "status": "saved"}
+    return {
+        "id": resume.id,
+        "filename": resume.filename,
+        "status": "saved",
+        "text_length": len(text),
+    }
