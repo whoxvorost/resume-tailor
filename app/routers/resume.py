@@ -7,6 +7,7 @@ import os
 from app.services.resume_parser import parse_resume
 from app.services.ats_scorer import calculate_ats_score
 from app.services.ai_generator import generate_tailored_resume
+from app.services.pdf_generator import generate_pdf
 
 router = APIRouter()
 
@@ -73,4 +74,29 @@ async def generate_resume(
         "resume_id": resume_id,
         "ats_score": ats_result["score"],
         "generated_resume": generated,
+    }
+
+
+@router.post("/export")
+async def export_resume(
+    resume_id: int, job_description: str, db: Session = Depends(get_db)
+):
+    resume = db.query(Resume).filter(Resume.id == resume_id).first()
+
+    if not resume:
+        return {"error": "Resume not found"}
+
+    resume_text = parse_resume(resume.file_path)
+    ats_result = calculate_ats_score(resume_text, job_description)
+    generated = generate_tailored_resume(
+        resume_text, job_description, ats_result["missing_keywords"]
+    )
+
+    pdf_path = generate_pdf(generated, f"resume_{resume_id}")
+
+    return {
+        "resume_id": resume_id,
+        "ats_score": ats_result["score"],
+        "pdf_path": pdf_path,
+        "status": "exported",
     }
