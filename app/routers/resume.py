@@ -15,6 +15,12 @@ from app.services.ai_generator import generate_tailored_resume
 from app.services.pdf_generator import generate_pdf
 import shutil
 import os
+from app.exceptions import (
+    ResumeNotFoundException,
+    FileTypeException,
+    FileSizeException,
+    AIServiceException,
+)
 
 router = APIRouter()
 
@@ -49,7 +55,7 @@ async def analyze_resume(request: AnalyzeRequest, db: Session = Depends(get_db))
     resume = db.query(Resume).filter(Resume.id == request.resume_id).first()
 
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise ResumeNotFoundException(request.resume_id)
 
     resume_text = parse_resume(resume.file_path)
     ats_result = calculate_ats_score(resume_text, request.job_description)
@@ -66,7 +72,7 @@ async def generate_resume(request: GenerateRequest, db: Session = Depends(get_db
     resume = db.query(Resume).filter(Resume.id == request.resume_id).first()
 
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise ResumeNotFoundException(request.resume_id)
 
     resume_text = parse_resume(resume.file_path)
     ats_result = calculate_ats_score(resume_text, request.job_description)
@@ -86,7 +92,7 @@ async def export_resume(request: GenerateRequest, db: Session = Depends(get_db))
     resume = db.query(Resume).filter(Resume.id == request.resume_id).first()
 
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        raise ResumeNotFoundException(request.resume_id)
 
     resume_text = parse_resume(resume.file_path)
     ats_result = calculate_ats_score(resume_text, request.job_description)
@@ -101,3 +107,33 @@ async def export_resume(request: GenerateRequest, db: Session = Depends(get_db))
         pdf_path=pdf_path,
         status="exported",
     )
+
+
+@router.post("/upload")
+async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if not file.filename.endswith((".pdf", ".docx")):
+        raise FileTypeException()
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise FileSizeException()
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(contents)
+
+    resume = Resume(filename=file.filename, file_path=file_path)
+    db.add(resume)
+    db.commit()
+    db.refresh(resume)
+
+    text = parse_resume(file_path)
+
+    return {
+        "id": resume.id,
+        "filename": resume.filename,
+        "status": "saved",
+        "text_length": len(text),
+    }
