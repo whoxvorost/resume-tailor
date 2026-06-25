@@ -20,6 +20,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 
 from app.models.resume import Resume
+from app.models.user import User
 from app.database import Base
 
 target_metadata = Base.metadata

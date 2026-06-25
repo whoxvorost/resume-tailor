@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import resume
 import uvicorn
+from app.routers import auth
 
 
 app = FastAPI(title="Resume Tailor API")
@@ -17,6 +18,7 @@ app.add_middleware(
 
 # Connect routers
 app.include_router(resume.router, prefix="/resume", tags=["resume"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 
 @app.get("/health")
