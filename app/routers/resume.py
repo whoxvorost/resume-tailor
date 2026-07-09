@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, HTTPException, File, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
@@ -15,6 +15,7 @@ from app.services.ai_generator import generate_tailored_resume
 from app.services.pdf_generator import generate_pdf
 from app.auth import get_current_user
 from app.exceptions import ResumeNotFoundException, FileTypeException, FileSizeException
+from fastapi.responses import FileResponse
 import shutil
 import os
 
@@ -125,4 +126,20 @@ async def export_resume(
         ats_score=ats_result["score"],
         pdf_path=pdf_path,
         status="exported",
+    )
+
+
+@router.get("/download/{resume_id}")
+async def download_pdf(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user),
+):
+    pdf_path = f"outputs/resume_{resume_id}.pdf"
+
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="PDF not found. Generate first.")
+
+    return FileResponse(
+        path=pdf_path, media_type="application/pdf", filename=f"resume_{resume_id}.pdf"
     )
